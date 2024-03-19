@@ -10,6 +10,9 @@
     {% endfor %}
 </ul>
 {% endif %}
+</div>
+{% if page == 'login' %}
+<div>
     <form method="Post" action="">
         {% csrf_token %}
         <label>
@@ -25,5 +28,17 @@
     </form> 
 </div>    
 
+{% else %}
+
+<div>
+    <form method="Post" action="">
+        {% csrf_token %}
+        
+
+        <input type="submit" value="Register" />
+    </form> 
+</div>    
+
+{% endif %}
 
 {% endblock content %}

@@ -6,5 +6,26 @@
        
 
     </form>  
-    <a href="{% url 'login' %}">login</a>
+<p>
+    
+        {% if request.user.is_authenticated %}
+        Hello <b>{{request.user}}</b>
+        {% endif %}
+
+</p>
+
+    {% if request.user.is_authenticated %}
+        <a href="{% url 'logout' %}">logout</a>
+    {% else %}    
+        <a href="{% url 'login' %}">login</a>
+    {% endif %}    
 <hr />
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
