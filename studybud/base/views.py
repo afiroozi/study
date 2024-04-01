@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from .models import Room, Topic, Message
-from .forms import RoomForm
+from .forms import RoomForm, UserForm
 
 
 def loginPage(request):
@@ -187,5 +187,20 @@ def topicsList(request):
     context = {'topics': topics}
 
     return render(request, 'base/home.html', context)
+
+@login_required(login_url='login')
+def userUpdate(request):
+    user = request.user
+    form = UserForm(instance=user)
+
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'User update successfully')
+            return redirect('user-profile', pk=user.id)
+
+    context = {'form': form}
+    return render(request, 'base/update_user.html', context)
 
 
