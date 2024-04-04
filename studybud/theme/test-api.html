@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <title>Test API</title>
+  </head>
+  <body>
+    <h1>Rooms</h1>
+	<div id="room-container"></div>
+	
+  </body>
+  <script>
+	let getRooms = async () => {
+    let response = await fetch('http://localhost:8000/api/rooms/'); 
+    console.log('Response:', response);         // Log the entire response object
+    console.log('Response Status:', response.status);  // Check for 200 success
+    if (response.ok) {
+        let data = await response.json();  
+        console.log('DATA:', data);         // Log the parsed JSON data
+        // ... (rest of your code to update the HTML) 
+    } else {
+        console.error('API Error:', response.statusText); // Log errors
+    }
+}
+	
+	getRooms()
+	
+  </script>
+  
+</html>
