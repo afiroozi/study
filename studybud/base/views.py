@@ -4,8 +4,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from .models import Room, Topic, Message, User
-from .forms import RoomForm, UserForm
+from .models import Room, Topic, Message, User, Profile
+from .forms import RoomForm, UserForm, ProfileForm
 
 
 def loginPage(request):
@@ -38,15 +38,23 @@ def logoutUser(request):
     return redirect('home')
 
 
+# Custom form
+class CustomUserCreationForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):  # Inherit existing Meta options
+        model = User
+        fields = ['email']  # Only include the email field
+
 def registerPage(request):
-    form = UserCreationForm()
+    form = CustomUserCreationForm()
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)    
+        form = CustomUserCreationForm(request.POST)    
         if form.is_valid():
-            user = form.save(commit=False)    
-            user.username = user.username.lower()
+            user = form.save(commit=False)
+            user.email = user.email.lower()        
+            user.username = user.email
             user.save()    
             login(request, user)
+            messages.success(request, 'Welcome! Your account registration is complete.')
             return redirect('home')
         else:
             messages.error(request, 'Something wrong')
@@ -187,19 +195,38 @@ def topicsList(request):
 
     return render(request, 'base/home.html', context)
 
+# @login_required(login_url='login')
+# def userUpdate(request):
+#     user = request.user
+#     form = UserForm(instance=user)
+
+#     if request.method == 'POST':
+#         form = UserForm(request.POST, request.FILES, instance=user)
+#         if form.is_valid():
+#             form.save()
+#             messages.success(request, 'User update successfully')
+#             return redirect('user-profile', pk=user.id)
+
+#     context = {'form': form}
+#     return render(request, 'base/update_user.html', context)
+
 @login_required(login_url='login')
 def userUpdate(request):
     user = request.user
-    form = UserForm(instance=user)
+    profile, created = Profile.objects.get_or_create(user=user)  
 
     if request.method == 'POST':
-        form = UserForm(request.POST, request.FILES, instance=user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'User update successfully')
+        user_form = UserForm(request.POST, instance=user)
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)  
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile_form.save()
+            messages.success(request, 'Your profile was successfully updated!')
             return redirect('user-profile', pk=user.id)
+    else:
+        user_form = UserForm(instance=user)
+        profile_form = ProfileForm(instance=profile)
 
-    context = {'form': form}
+    context = {'user_form': user_form, 'profile_form': profile_form}
     return render(request, 'base/update_user.html', context)
-
 

@@ -1,74 +1,57 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.models import AbstractUser
+from django.db.models.signals import post_save
 
 
-class UserManager(BaseUserManager):
-    use_in_migrations = True
-
-    def _create_user(self, email, password, **extra_fields):
-        if not email:
-            raise ValueError('Users must have an email address')
-
-        email = self.normalize_email(email)
-        user = self.model(email=email)
-
-        # Handle extra fields (ensure only valid fields are set)
-        user.is_staff = extra_fields.pop('is_staff', False)
-        user.is_superuser = extra_fields.pop('is_superuser', False)
-
-        # Additional fields you want to handle:
-        # user.first_name = extra_fields.pop('first_name', '')
-        # user.last_name = extra_fields.pop('last_name', '')
-
-        if extra_fields:
-            raise ValueError(f"Unexpected extra_fields: {extra_fields}")
-
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password):
-        return self._create_user(email, password, is_staff=True, is_superuser=True)        
-
-
-class User(AbstractBaseUser, PermissionsMixin):
-    name = models.CharField(max_length=200, null=True)
-    email = models.EmailField(unique=True, null=True)
-    bio = models.TextField(null=True)
-    username = models.CharField(max_length=254, unique=True)
-    is_superuser = models.BooleanField(default=False)
-    avatar = models.ImageField(null=True, default="avatar.svg")
-
-    objects = UserManager()
+class User(AbstractUser):
+    username = models.CharField(unique=True, max_length=100)
+    email = models.EmailField(unique=True, null=False, blank=False)
+    full_name = models.CharField(max_length=200, null=True, blank=True)
+    phone = models.CharField(max_length=100, null=True, blank=True)
+    
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ['username']
 
-    @property
-    def is_staff(self):
-        return self.is_superuser  
-
-    @is_staff.setter
-    def is_staff(self, value):
-        self._is_superuser = value  # Notice the use of _is_superuser
-
-    @property
-    def is_superuser(self):  
-        return True # You might change this logic in the future
-
-    @is_superuser.setter
-    def is_superuser(self, value):
-        self._is_superuser = value # Notice the use of _is_superuser   
+    def __str__(self):
+        return self.email
     
-    def has_module_perms(self, app_label):
-        """ Always grant all permissions """
-        return True 
+    def save(self, *args, **kwargs):
+        email_username, mobile = self.email.split("@") #amir@email.com
+        if self.full_name == "" or self.full_name == None:
+            self.full_name = email_username
+        if self.username == "" or self.username == None:
+            self.username = email_username
+
+        super(User, self).save(*args, **kwargs)
     
-    def has_perm(self, perm, obj=None):
-        """ Always grant all permissions """
-        return True
+
+# Profile model definition
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    full_name = models.CharField(max_length=200, null=True, blank=True)
+    gender = models.CharField(max_length=100, null=True, blank=True)
+    country = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    address = models.CharField(max_length=200, null=True, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    bio = models.TextField(null=True)
+    avatar = models.ImageField(null=True, default="avatar.svg")
+
+    def __str__(self):
+        if self.full_name:
+            return str(self.full_name)
+        else:
+            return str(self.user.full_name)
+        
     
+    def save(self, *args, **kwargs):
+        if self.full_name == "" or self.full_name == None:
+            self.full_name = self.user.full_name
+       
+        super(Profile, self).save(*args, **kwargs)
+
 
 
 class Topic(models.Model): 
@@ -102,3 +85,20 @@ class Message(models.Model):
     
     def __str__(self):
         return self.body[0:5]
+    
+
+# Signal receiver functions
+def create_user_profiles(sender, instance,created,**kwargs):
+    if created:
+        Profile.objects.get_or_create(user=instance)
+
+def save_user_profiles(sender, instance,**kwargs):
+    if hasattr(instance, 'profile'):  # Check if exists
+        instance.profile.save()
+    else: 
+        profile = Profile.objects.create(user=instance)
+    
+
+# Connect the signals 
+post_save.connect(create_user_profiles, sender=User)
+post_save.connect(save_user_profiles, sender=User)
